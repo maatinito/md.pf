@@ -1,0 +1,54 @@
+@import "colors";
+@import "constants";
+
+.status-progress {
+  text-align: center;
+}
+
+.status-timeline {
+  display: inline-block;
+  margin-top: $default-padding * 2;
+  margin-bottom: $default-padding * 2;
+  border: 1px solid gray;
+
+  li {
+    display: inline-block;
+    padding-top: $default-spacer;
+    padding-bottom: $default-spacer;
+
+    &:first-child {
+      padding-left: 20px;
+    }
+
+    &:last-child {
+      padding-right: 20px;
+    }
+
+    &.active {
+      font-weight: bold;
+    }
+
+    &.active ~ li {
+      color: $grey;
+    }
+
+    // Arrows
+    &:not(:last-child)::after {
+      content: '▸';
+      display: inline-block;
+      margin-left: 10px;
+      margin-right: 10px;
+      vertical-align: top;
+    }
+  }
+}
+
+.status-explanation {
+  max-width: 600px;
+  margin: auto;
+  text-align: left;
+
+  p {
+    margin-bottom: $default-padding;
+  }
+}
