@@ -20,17 +20,19 @@ shared_dirs = [
   'log',
   'sockets',
   'tmp/cache',
-  'tmp/pids'
+  'tmp/pids',
 ]
+
+user = ENV.fetch('user') {'ds'}
 
 set :domain, ENV.fetch('domain')
 set :deploy_to, deploy_to
 set :repository, 'https://github.com/betagouv/tps.git'
 set :branch, ENV.fetch('branch')
 set :forward_agent, true
-set :user, 'ds'
+set :user, user
 set :shared_dirs, shared_dirs
-set :rbenv_path, "/home/ds/.rbenv/bin/rbenv"
+set :rbenv_path, "/home/#{user}/.rbenv/bin/rbenv"
 
 puts "Deploy to #{ENV.fetch('domain')}, branch: #{ENV.fetch('branch')}"
 
@@ -49,7 +51,7 @@ namespace :yarn do
     command %{
       echo "-----> Installing package dependencies using yarn"
       #{echo_cmd %[yarn install --non-interactive]}
-    }
+            }
   end
 end
 
@@ -59,7 +61,7 @@ namespace :after_party do
     command %{
       echo "-----> Running deploy tasks"
       #{echo_cmd %[bundle exec rake after_party:run]}
-    }
+            }
   end
 end
 
@@ -69,7 +71,7 @@ namespace :service do
     command %{
       echo "-----> Restarting puma service"
       #{echo_cmd %[sudo systemctl restart puma]}
-    }
+            }
   end
 
   desc "Reload nginx"
@@ -77,7 +79,7 @@ namespace :service do
     command %{
       echo "-----> Reloading nginx service"
       #{echo_cmd %[sudo systemctl reload nginx]}
-    }
+            }
   end
 
   desc "Restart delayed_job"
@@ -85,14 +87,14 @@ namespace :service do
     command %{
       echo "-----> Restarting delayed_job service"
       #{echo_cmd %[sudo systemctl restart delayed_job]}
-    }
+            }
   end
 end
 
 desc "Deploys the current version to the server."
 task :deploy do
-  command 'export PATH=$PATH:/home/ds/.rbenv/bin:/home/ds/.rbenv/shims'
-  command 'source /home/ds/.profile'
+  command "export PATH=$PATH:/home/#{user}/.rbenv/bin:/home/#{user}/.rbenv/shims"
+  command "source /home/#{user}/.profile"
 
   deploy do
     # Put things that will set up an empty directory into a fully set-up
