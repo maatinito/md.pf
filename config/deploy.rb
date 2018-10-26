@@ -21,13 +21,14 @@ shared_dirs = [
   'sockets',
   'tmp/cache',
   'tmp/pids',
+  'vendor/bundle'
 ]
 
 user = ENV.fetch('user') {'ds'}
 
 set :domain, ENV.fetch('domain')
 set :deploy_to, deploy_to
-set :repository, 'https://github.com/betagouv/tps.git'
+set :repository, 'https://github.com/maatinito/tps.git'
 set :branch, ENV.fetch('branch')
 set :forward_agent, true
 set :user, user
