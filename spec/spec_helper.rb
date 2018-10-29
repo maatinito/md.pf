@@ -23,6 +23,7 @@ require File.expand_path('../config/environment', __dir__)
 require 'rspec/rails'
 require 'capybara/rspec'
 require 'capybara-screenshot/rspec'
+require 'capybara/email/rspec'
 require 'database_cleaner'
 require 'webmock/rspec'
 require 'shoulda-matchers'
@@ -80,6 +81,7 @@ end
 DatabaseCleaner.strategy = :transaction
 
 TPS::Application.load_tasks
+Rake.application.options.trace = false
 
 include Warden::Test::Helpers
 
@@ -101,6 +103,11 @@ RSpec.configure do |config|
   config.color = true
   config.infer_spec_type_from_file_location!
   config.tty = true
+
+  # Since rspec 3.8.0, bisect uses fork to improve bisection speed.
+  # This however fails as soon as we're running feature tests (which uses many processes).
+  # Default to the :shell bisect runner, so that bisecting over feature tests works.
+  config.bisect_runner = :shell
 
   config.include Shoulda::Matchers::ActiveRecord, type: :model
   config.include Shoulda::Matchers::ActiveModel, type: :model
@@ -136,6 +143,8 @@ RSpec.configure do |config|
     Warden.test_mode!
 
     Typhoeus::Expectation.clear
+
+    ActionMailer::Base.deliveries.clear
 
     if Flipflop.remote_storage?
       VCR.use_cassette("ovh_storage_init") do

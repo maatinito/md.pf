@@ -120,6 +120,9 @@ GEM
       rack (>= 1.0.0)
       rack-test (>= 0.5.4)
       xpath (>= 2.0, < 4.0)
+    capybara-email (3.0.1)
+      capybara (>= 2.4, < 4.0)
+      mail
     capybara-screenshot (1.0.21)
       capybara (>= 1.0, < 4)
       launchy
@@ -467,7 +470,7 @@ GEM
       railties (>= 4)
       request_store (~> 1.0)
     logstash-event (1.2.02)
-    loofah (2.2.2)
+    loofah (2.2.3)
       crass (~> 1.0.2)
       nokogiri (>= 1.5.9)
     lumberjack (1.0.13)
@@ -812,6 +815,7 @@ DEPENDENCIES
   browser
   byebug
   capybara
+  capybara-email
   capybara-screenshot
   capybara-selenium
   carrierwave

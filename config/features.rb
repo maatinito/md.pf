@@ -13,21 +13,21 @@ Flipflop.configure do
       title: "Champ SIRET"
     feature :champ_linked_dropdown,
       title: "Champ double menu déroulant"
-    feature :champ_carte,
-      title: "Champ Carte"
+    feature :champ_integer_number,
+      title: "Champ nombre entier"
   end
 
   feature :web_hook
   feature :publish_draft
   feature :support_form
+  feature :enable_email_login_token
 
   group :production do
     feature :remote_storage,
       default: ENV['FOG_ENABLED'] == 'enabled'
     feature :weekly_overview,
       default: ENV['APP_NAME'] == 'tps'
+    feature :pre_maintenance_mode
+    feature :maintenance_mode
   end
-
-  feature :pre_maintenance_mode
-  feature :maintenance_mode
 end

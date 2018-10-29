@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_10_10_183331) do
+ActiveRecord::Schema.define(version: 2018_11_08_151929) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -347,6 +347,7 @@ ActiveRecord::Schema.define(version: 2018_10_10_183331) do
     t.jsonb "geometry"
     t.jsonb "properties"
     t.bigint "champ_id"
+    t.string "geo_reference_id"
     t.index ["champ_id"], name: "index_geo_areas_on_champ_id"
     t.index ["source"], name: "index_geo_areas_on_source"
   end
@@ -364,6 +365,9 @@ ActiveRecord::Schema.define(version: 2018_10_10_183331) do
     t.string "last_sign_in_ip"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.text "encrypted_login_token"
+    t.datetime "login_token_created_at"
+    t.jsonb "features", default: {}, null: false
     t.index ["email"], name: "index_gestionnaires_on_email", unique: true
     t.index ["reset_password_token"], name: "index_gestionnaires_on_reset_password_token", unique: true
   end
@@ -418,17 +422,6 @@ ActiveRecord::Schema.define(version: 2018_10_10_183331) do
     t.datetime "updated_at"
     t.index ["dossier_id"], name: "index_pieces_justificatives_on_dossier_id"
     t.index ["type_de_piece_justificative_id"], name: "index_pieces_justificatives_on_type_de_piece_justificative_id"
-  end
-
-  create_table "procedure_paths", id: :serial, force: :cascade do |t|
-    t.string "path"
-    t.integer "procedure_id"
-    t.integer "administrateur_id"
-    t.datetime "created_at"
-    t.datetime "updated_at"
-    t.bigint "test_procedure_id"
-    t.index ["path"], name: "index_procedure_paths_on_path"
-    t.index ["test_procedure_id"], name: "index_procedure_paths_on_test_procedure_id"
   end
 
   create_table "procedure_presentations", id: :serial, force: :cascade do |t|
@@ -620,8 +613,6 @@ ActiveRecord::Schema.define(version: 2018_10_10_183331) do
   add_foreign_key "feedbacks", "users"
   add_foreign_key "geo_areas", "champs"
   add_foreign_key "initiated_mails", "procedures"
-  add_foreign_key "procedure_paths", "administrateurs"
-  add_foreign_key "procedure_paths", "procedures"
   add_foreign_key "procedure_presentations", "assign_tos"
   add_foreign_key "procedures", "services"
   add_foreign_key "received_mails", "procedures"

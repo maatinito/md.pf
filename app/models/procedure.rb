@@ -1,3 +1,5 @@
+require Rails.root.join('lib', 'percentile')
+
 class Procedure < ApplicationRecord
   MAX_DUREE_CONSERVATION = 36
 
@@ -9,7 +11,6 @@ class Procedure < ApplicationRecord
 
   has_one :module_api_carto, dependent: :destroy
   has_one :attestation_template, dependent: :destroy
-  has_one :procedure_path, dependent: :destroy
 
   belongs_to :administrateur
   belongs_to :parent_procedure, class_name: 'Procedure'
@@ -46,12 +47,22 @@ class Procedure < ApplicationRecord
   scope :by_libelle,            -> { order(libelle: :asc) }
   scope :created_during,        -> (range) { where(created_at: range) }
   scope :cloned_from_library,   -> { where(cloned_from_library: true) }
-  scope :avec_lien,             -> { joins(:procedure_path) }
+  scope :avec_lien,             -> { where.not(path: nil) }
+
+  scope :for_api, -> {
+    includes(
+      :administrateur,
+      :types_de_champ_private,
+      :types_de_champ,
+      :types_de_piece_justificative,
+      :module_api_carto
+    )
+  }
 
   validates :libelle, presence: true, allow_blank: false, allow_nil: false
   validates :description, presence: true, allow_blank: false, allow_nil: false
   validate :check_juridique
-  validates :path, format: { with: /\A[a-z0-9_\-]{3,50}\z/ }, uniqueness: true, presence: true, allow_blank: false, allow_nil: true
+  validates :path, format: { with: /\A[a-z0-9_\-]{3,50}\z/ }, uniqueness: { scope: :aasm_state, case_sensitive: false }, presence: true, allow_blank: false, allow_nil: true
   # FIXME: remove duree_conservation_required flag once all procedures are converted to the new style
   validates :duree_conservation_dossiers_dans_ds, allow_nil: false, numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: MAX_DUREE_CONSERVATION }, if: :durees_conservation_required
   validates :duree_conservation_dossiers_hors_ds, allow_nil: false, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: :durees_conservation_required
@@ -101,19 +112,6 @@ class Procedure < ApplicationRecord
     end
   end
 
-  def publish_with_path!(path)
-    procedure_path = ProcedurePath
-      .where(administrateur: administrateur)
-      .find_by(path: path)
-
-    if procedure_path.present?
-      procedure_path.publish!(self)
-    else
-      create_procedure_path!(administrateur: administrateur, path: path)
-    end
-    update!(path: path)
-  end
-
   def reset!
     if locked?
       raise "Can not reset a locked procedure."
@@ -124,14 +122,6 @@ class Procedure < ApplicationRecord
 
   def locked?
     publiee_ou_archivee?
-  end
-
-  def path_available?(path)
-    !ProcedurePath.where.not(procedure: self).exists?(path: path)
-  end
-
-  def path_is_mine?(path)
-    ProcedurePath.where.not(procedure: self).mine?(administrateur, path)
   end
 
   # This method is needed for transition. Eventually this will be the same as brouillon?.
@@ -155,10 +145,6 @@ class Procedure < ApplicationRecord
       .map { |tdc| tdc.champ.build }
 
     Dossier.new(procedure: self, champs: champs, champs_private: champs_private)
-  end
-
-  def path
-    read_attribute(:path) || procedure_path&.path
   end
 
   def default_path
@@ -320,33 +306,78 @@ class Procedure < ApplicationRecord
     end
   end
 
-  def mean_traitement_time
-    mean_time(:en_construction_at, :processed_at)
+  def usual_traitement_time
+    percentile_time(:en_construction_at, :processed_at, 90)
   end
 
-  def mean_verification_time
-    mean_time(:en_construction_at, :en_instruction_at)
+  def usual_verification_time
+    percentile_time(:en_construction_at, :en_instruction_at, 90)
   end
 
-  def mean_instruction_time
-    mean_time(:en_instruction_at, :processed_at)
+  def usual_instruction_time
+    percentile_time(:en_instruction_at, :processed_at, 90)
+  end
+
+  PATH_AVAILABLE = :available
+  PATH_AVAILABLE_PUBLIEE = :available_publiee
+  PATH_NOT_AVAILABLE = :not_available
+  PATH_NOT_AVAILABLE_BROUILLON = :not_available_brouillon
+  PATH_CAN_PUBLISH = [PATH_AVAILABLE, PATH_AVAILABLE_PUBLIEE]
+
+  def path_availability(path)
+    Procedure.path_availability(administrateur, path, id)
+  end
+
+  def self.path_availability(administrateur, path, exclude_id = nil)
+    if exclude_id.present?
+      procedure = where.not(id: exclude_id).find_by(path: path)
+    else
+      procedure = find_by(path: path)
+    end
+
+    if procedure.blank?
+      PATH_AVAILABLE
+    elsif administrateur.owns?(procedure)
+      if procedure.brouillon?
+        PATH_NOT_AVAILABLE_BROUILLON
+      else
+        PATH_AVAILABLE_PUBLIEE
+      end
+    else
+      PATH_NOT_AVAILABLE
+    end
+  end
+
+  def self.find_with_path(path)
+    where.not(aasm_state: :archivee).where("path LIKE ?", "%#{path}%")
   end
 
   private
 
-  def can_publish?(path)
-    procedure_path = ProcedurePath.find_by(path: path)
-    if procedure_path.present?
-      administrateur.owns?(procedure_path)
-    else
-      true
+  def claim_path_ownership!(path)
+    procedure = Procedure.where(administrateur: administrateur).find_by(path: path)
+
+    if procedure&.publiee? && procedure != self
+      procedure.archive!
     end
+
+    update!(path: path)
+  end
+
+  def can_publish?(path)
+    path_availability(path).in?(PATH_CAN_PUBLISH)
   end
 
   def after_publish(path)
     update!(published_at: Time.zone.now)
 
-    publish_with_path!(path)
+    claim_path_ownership!(path)
+  end
+
+  def after_reopen(path)
+    update!(published_at: Time.zone.now, archived_at: nil)
+
+    claim_path_ownership!(path)
   end
 
   def after_archive
@@ -356,14 +387,7 @@ class Procedure < ApplicationRecord
   def after_hide
     now = Time.zone.now
     update!(hidden_at: now, path: nil)
-    procedure_path&.hide!
     dossiers.update_all(hidden_at: now)
-  end
-
-  def after_reopen(path)
-    update!(published_at: Time.zone.now, archived_at: nil)
-
-    publish_with_path!(path)
   end
 
   def after_draft
@@ -399,14 +423,15 @@ class Procedure < ApplicationRecord
     true
   end
 
-  def mean_time(start_attribute, end_attribute)
+  def percentile_time(start_attribute, end_attribute, p)
     times = dossiers
       .state_termine
+      .where(end_attribute => 1.month.ago..DateTime.current)
       .pluck(start_attribute, end_attribute)
       .map { |(start_date, end_date)| end_date - start_date }
 
     if times.present?
-      times.sum.fdiv(times.size).ceil
+      times.percentile(p).ceil
     end
   end
 end

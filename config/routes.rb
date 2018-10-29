@@ -22,11 +22,11 @@ Rails.application.routes.draw do
 
     resources :users, only: [:index, :show] do
       post 'resend_confirmation_instructions', on: :member
-      post 'confirm', on: :member
     end
 
     resources :gestionnaires, only: [:index, :show] do
       post 'reinvite', on: :member
+      put 'enable_feature', on: :member
     end
 
     resources :dossiers, only: [:show]
@@ -89,6 +89,8 @@ Rails.application.routes.draw do
   devise_scope :user do
     get '/users/sign_in/demo' => redirect("/users/sign_in")
     get '/users/no_procedure' => 'users/sessions#no_procedure'
+    get 'connexion-par-jeton/:id' => 'users/sessions#sign_in_by_link', as: 'sign_in_by_link'
+    get 'lien-envoye/:email' => 'users/sessions#link_sent', constraints: { email: /.*/ }, as: 'link_sent'
   end
 
   devise_scope :gestionnaire do
@@ -128,12 +130,8 @@ Rails.application.routes.draw do
     post ':position/carte', to: 'carte#show', as: :carte
   end
 
-  namespace :commencer do
-    get '/test/:procedure_path' => '/users/dossiers#commencer_test', as: :test
-    get '/:procedure_path' => '/users/dossiers#commencer'
-  end
-
   get "patron" => "root#patron"
+  get "suivi" => "root#suivi"
 
   get "contact", to: "support#index"
   post "contact", to: "support#create"
@@ -146,11 +144,7 @@ Rails.application.routes.draw do
   #
 
   namespace :users do
-    namespace :dossiers do
-      resources :invites, only: [:index, :show]
-    end
-
-    resources :dossiers do
+    resources :dossiers, only: [] do
       post '/carte/zones' => 'carte#zones'
       get '/carte' => 'carte#show'
       post '/carte' => 'carte#save'
@@ -161,6 +155,7 @@ Rails.application.routes.draw do
     # Redirection of legacy "/users/dossiers" route to "/dossiers"
     get 'dossiers', to: redirect('/dossiers')
     get 'dossiers/:id/recapitulatif', to: redirect('/dossiers/%{id}')
+    get 'dossiers/invites/:id', to: redirect(path: '/invites/%{id}')
   end
 
   namespace :gestionnaire do
@@ -177,10 +172,6 @@ Rails.application.routes.draw do
     get 'procedures/draft' => 'procedures#draft'
     get 'procedures/path_list' => 'procedures#path_list'
     get 'procedures/available' => 'procedures#check_availability'
-
-    get 'change_dossier_state' => 'change_dossier_state#index'
-    post 'change_dossier_state' => 'change_dossier_state#check'
-    patch 'change_dossier_state' => 'change_dossier_state#change'
 
     resources :procedures do
       collection do
@@ -247,8 +238,10 @@ Rails.application.routes.draw do
   get 'address/suggestions' => 'address#suggestions'
   get 'address/geocode' => 'address#geocode'
 
-  namespace :invites do
-    post 'dossier/:dossier_id' => '/invites#create', as: 'dossier'
+  resources :invites, only: [:show] do
+    collection do
+      post 'dossier/:dossier_id', to: 'invites#create', as: :dossier
+    end
   end
 
   #
@@ -268,7 +261,12 @@ Rails.application.routes.draw do
   #
 
   scope module: 'new_user' do
-    resources :dossiers, only: [:index, :show] do
+    namespace :commencer do
+      get '/test/:path', action: 'commencer_test', as: :test
+      get '/:path', action: 'commencer'
+    end
+
+    resources :dossiers, only: [:index, :show, :new] do
       member do
         get 'identite'
         patch 'update_identite'

@@ -4,7 +4,7 @@ feature 'The gestionnaire part' do
   include ActiveJob::TestHelper
 
   let(:password) { 'secret_password' }
-  let!(:gestionnaire) { create(:gestionnaire, password: password) }
+  let!(:gestionnaire) { create(:gestionnaire, :with_trusted_device, password: password) }
 
   let!(:procedure) { create(:procedure, :published, gestionnaires: [gestionnaire]) }
   let!(:dossier) { create(:dossier, state: Dossier.states.fetch(:en_construction), procedure: procedure) }
@@ -73,9 +73,6 @@ feature 'The gestionnaire part' do
   end
 
   scenario 'A gestionnaire can use avis' do
-    ActionMailer::Base.deliveries = []
-    ActiveJob::Base.queue_adapter = :test
-
     log_in(gestionnaire.email, password)
 
     click_on procedure.libelle
@@ -119,7 +116,7 @@ feature 'The gestionnaire part' do
 
     log_out
 
-    log_in(gestionnaire.email, password)
+    log_in(gestionnaire.email, password, check_email: false)
 
     click_on procedure.libelle
     click_on dossier.user.email
@@ -176,14 +173,13 @@ feature 'The gestionnaire part' do
     expect(page).to have_text("Dossier envoyé")
   end
 
-  def log_in(email, password)
+  def log_in(email, password, check_email: true)
     visit '/'
     click_on 'Connexion'
     expect(page).to have_current_path(new_user_session_path)
 
-    fill_in 'user_email', with: email
-    fill_in 'user_password', with: password
-    click_on 'Se connecter'
+    sign_in_with(email, password, check_email)
+
     expect(page).to have_current_path(gestionnaire_procedures_path)
   end
 
@@ -192,14 +188,14 @@ feature 'The gestionnaire part' do
   end
 
   def ask_confidential_avis(to, introduction)
-    fill_in 'avis_email', with: to
+    fill_in 'avis_emails', with: to
     fill_in 'avis_introduction', with: introduction
     select 'confidentiel', from: 'avis_confidentiel'
     click_on 'Demander un avis'
   end
 
   def test_mail(to, content)
-    mail = ActionMailer::Base.deliveries.first
+    mail = ActionMailer::Base.deliveries.last
     expect(mail.to).to match([to])
     expect(mail.body.parts.map(&:to_s)).to all(include(content))
   end

@@ -439,9 +439,8 @@ describe Procedure do
 
     it { expect(procedure.archived_at).to eq(nil) }
     it { expect(procedure.published_at).to eq(now) }
-    it { expect(ProcedurePath.find_by(path: "example-path")).to be }
-    it { expect(ProcedurePath.find_by(path: "example-path").procedure).to eq(procedure) }
-    it { expect(ProcedurePath.find_by(path: "example-path").administrateur).to eq(procedure.administrateur) }
+    it { expect(Procedure.find_by(path: "example-path")).to eq(procedure) }
+    it { expect(Procedure.find_by(path: "example-path").administrateur).to eq(procedure.administrateur) }
   end
 
   describe "#brouillon?" do
@@ -486,7 +485,6 @@ describe Procedure do
 
   describe 'archive' do
     let(:procedure) { create(:procedure, :published) }
-    let(:procedure_path) { ProcedurePath.find(procedure.procedure_path.id) }
     let(:now) { Time.zone.now.beginning_of_minute }
     before do
       Timecop.freeze(now)
@@ -628,13 +626,14 @@ describe Procedure do
 
   describe "#export_filename" do
     before { Timecop.freeze(Time.zone.local(2018, 1, 2, 23, 11, 14)) }
+    after { Timecop.return }
 
     subject { procedure.export_filename }
 
     context "with a path" do
       let(:procedure) { create(:procedure, :published) }
 
-      it { is_expected.to eq("dossiers_#{procedure.procedure_path.path}_2018-01-02_23-11") }
+      it { is_expected.to eq("dossiers_#{procedure.path}_2018-01-02_23-11") }
     end
 
     context "without a path" do
@@ -707,22 +706,45 @@ describe Procedure do
     end
   end
 
-  describe '#mean_instruction_time' do
+  describe '#usual_instruction_time' do
     let(:procedure) { create(:procedure) }
 
-    context 'when there is only one dossier' do
-      let(:dossier) { create(:dossier, procedure: procedure) }
+    def create_dossier(instruction_date:, processed_date:)
+      dossier = create(:dossier, :accepte, procedure: procedure)
+      dossier.update!(en_instruction_at: instruction_date, processed_at: processed_date)
+    end
 
-      context 'which is termine' do
-        before do
-          dossier.accepte!
-          processed_date = Time.zone.parse('12/12/2012')
-          instruction_date = processed_date - 1.day
-          dossier.update(en_instruction_at: instruction_date, processed_at: processed_date)
-        end
-
-        it { expect(procedure.mean_instruction_time).to eq(1.day.to_i) }
+    before do
+      processed_delays.each do |delay|
+        create_dossier(instruction_date: 1.week.ago - delay, processed_date: 1.week.ago)
       end
+    end
+
+    context 'when there are several processed dossiers' do
+      let(:processed_delays) { [1.day, 2.days, 2.days, 2.days, 2.days, 3.days, 3.days, 3.days, 3.days, 12.days] }
+
+      it 'returns a time representative of the dossier instruction delay' do
+        expect(procedure.usual_instruction_time).to be_between(3.days, 4.days)
+      end
+    end
+
+    context 'when there are very old dossiers' do
+      let(:processed_delays) { [2.days, 2.days] }
+      let!(:old_dossier) { create_dossier(instruction_date: 3.months.ago, processed_date: 2.months.ago) }
+
+      it 'ignores dossiers older than 1 month' do
+        expect(procedure.usual_instruction_time).to be_within(10.seconds).of(2.days)
+      end
+    end
+
+    context 'when there is only one processed dossier' do
+      let(:processed_delays) { [1.day] }
+      it { expect(procedure.usual_instruction_time).to be_within(10.seconds).of(1.day) }
+    end
+
+    context 'where there is no processed dossier' do
+      let(:processed_delays) { [] }
+      it { expect(procedure.usual_instruction_time).to be_nil }
     end
   end
 end

@@ -1,7 +1,12 @@
 fr:
   activerecord:
+    models:
+      procedure:
+        one: Démarche
+        other: Démarches
     attributes:
       procedure:
+        path: Lien public
         organisation: Organisme
         duree_conservation_dossiers_dans_ds: Durée de conservation des dossiers sur demarches-simplifiees.fr
         duree_conservation_dossiers_hors_ds: Durée de conservation des dossiers hors demarches-simplifiees.fr
