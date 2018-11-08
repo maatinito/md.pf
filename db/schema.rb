@@ -217,6 +217,7 @@ ActiveRecord::Schema.define(version: 2018_10_30_103913) do
     t.string "state"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["dossier_id"], name: "idx_deleted_dossiers_dossier_id"
     t.index ["procedure_id"], name: "index_deleted_dossiers_on_procedure_id"
   end
 
@@ -477,6 +478,7 @@ ActiveRecord::Schema.define(version: 2018_10_30_103913) do
     t.boolean "juridique_required", default: true
     t.boolean "durees_conservation_required", default: true
     t.string "path"
+    t.index ["administrateur_id"], name: "idx_procedures_administrateur_id"
     t.index ["hidden_at"], name: "index_procedures_on_hidden_at"
     t.index ["parent_procedure_id"], name: "index_procedures_on_parent_procedure_id"
     t.index ["service_id"], name: "index_procedures_on_service_id"
@@ -556,6 +558,7 @@ ActiveRecord::Schema.define(version: 2018_10_30_103913) do
     t.datetime "updated_at"
     t.jsonb "options"
     t.index ["private"], name: "index_types_de_champ_on_private"
+    t.index ["procedure_id"], name: "idx_types_de_champ_procedure_id"
   end
 
   create_table "types_de_piece_justificative", id: :serial, force: :cascade do |t|
@@ -568,6 +571,7 @@ ActiveRecord::Schema.define(version: 2018_10_30_103913) do
     t.integer "order_place"
     t.string "lien_demarche"
     t.boolean "mandatory", default: false
+    t.index ["procedure_id"], name: "idx_types_de_piece_justificative_procedure_id"
   end
 
   create_table "users", id: :serial, force: :cascade do |t|
@@ -612,21 +616,38 @@ ActiveRecord::Schema.define(version: 2018_10_30_103913) do
     t.index ["procedure_id"], name: "index_without_continuation_mails_on_procedure_id"
   end
 
+  add_foreign_key "administrateurs_gestionnaires", "administrateurs", name: "fk_administrateurs_gestionnaires_administrateurs"
+  add_foreign_key "administrateurs_gestionnaires", "gestionnaires", name: "fk_administrateurs_gestionnaires_gestionnaires"
+  add_foreign_key "administrateurs_procedures", "administrateurs", name: "fk_administrateurs_procedures_administrateurs"
+  add_foreign_key "administrateurs_procedures", "procedures", name: "fk_administrateurs_procedures_procedures"
+  add_foreign_key "assign_tos", "gestionnaires", name: "fk_assign_tos_gestionnaires"
+  add_foreign_key "assign_tos", "procedures", name: "fk_assign_tos_procedures"
   add_foreign_key "attestation_templates", "procedures"
   add_foreign_key "attestations", "dossiers"
   add_foreign_key "avis", "gestionnaires", column: "claimant_id"
+  add_foreign_key "champs", "dossiers", name: "fk_champs_dossiers"
+  add_foreign_key "champs", "types_de_champ", name: "fk_champs_types_de_champ"
   add_foreign_key "closed_mails", "procedures"
   add_foreign_key "commentaires", "dossiers"
+  add_foreign_key "deleted_dossiers", "dossiers", name: "fk_deleted_dossiers_dossiers"
+  add_foreign_key "deleted_dossiers", "procedures", name: "fk_deleted_dossiers_procedures"
+  add_foreign_key "dossiers", "procedures", name: "fk_dossiers_procedures"
   add_foreign_key "dossiers", "users"
   add_foreign_key "feedbacks", "users"
   add_foreign_key "geo_areas", "champs"
   add_foreign_key "initiated_mails", "procedures"
+  add_foreign_key "pieces_justificatives", "dossiers", name: "fk_pieces_justificatives_dossiers"
+  add_foreign_key "pieces_justificatives", "types_de_piece_justificative", name: "fk_pieces_justificatives"
   add_foreign_key "procedure_paths", "administrateurs"
   add_foreign_key "procedure_paths", "procedures"
   add_foreign_key "procedure_presentations", "assign_tos"
+  add_foreign_key "procedures", "administrateurs", name: "fk_procedures_administrateurs"
+  add_foreign_key "procedures", "procedures", column: "parent_procedure_id", name: "fk_procedures_procedures"
   add_foreign_key "procedures", "services"
   add_foreign_key "received_mails", "procedures"
   add_foreign_key "refused_mails", "procedures"
   add_foreign_key "services", "administrateurs"
+  add_foreign_key "types_de_champ", "procedures", name: "fk_types_de_champ_procedures"
+  add_foreign_key "types_de_piece_justificative", "procedures", name: "fk_types_de_piece_justificative_procedures"
   add_foreign_key "without_continuation_mails", "procedures"
 end
