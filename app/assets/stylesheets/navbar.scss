@@ -37,7 +37,7 @@
 
   #home {
     text-align: left;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    box-shadow: 0px 4px 0px 0 rgba(0, 0, 0, 0.3);
     background-color: $nav-bar-bg;
     height: 60px;
 
@@ -59,8 +59,8 @@
     min-height: 60px;
     background-color: $nav-bar-bg;
     color: $nav-bar-fg;
-    box-shadow: 0 1px 2px 0 rgba(50, 50, 50, 0.5);
-    padding-left: 50px;
+    //box-shadow: 0 1px 2px 0 rgba(50, 50, 50, 0.5);
+    //padding-left: 50px;
 
     .main-info {
       font-family: Arial;
