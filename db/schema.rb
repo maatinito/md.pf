@@ -638,8 +638,6 @@ ActiveRecord::Schema.define(version: 2018_10_30_103913) do
   add_foreign_key "initiated_mails", "procedures"
   add_foreign_key "pieces_justificatives", "dossiers", name: "fk_pieces_justificatives_dossiers"
   add_foreign_key "pieces_justificatives", "types_de_piece_justificative", name: "fk_pieces_justificatives"
-  add_foreign_key "procedure_paths", "administrateurs"
-  add_foreign_key "procedure_paths", "procedures"
   add_foreign_key "procedure_presentations", "assign_tos"
   add_foreign_key "procedures", "administrateurs", name: "fk_procedures_administrateurs"
   add_foreign_key "procedures", "procedures", column: "parent_procedure_id", name: "fk_procedures_procedures"
