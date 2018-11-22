@@ -45,7 +45,7 @@ Rails.application.configure do
   # config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect' # for NGINX
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  config.force_ssl = false
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
@@ -79,10 +79,11 @@ Rails.application.configure do
     }
   else
     config.action_mailer.delivery_method = :mailjet
+    puts "mailjet configuration #{ENV['MAILJET_API_KEY']}"
   end
 
   config.action_mailer.default_url_options = {
-    protocol: :https,
+    protocol: :http,
     host: ENV['APP_HOST']
   }
 
@@ -90,7 +91,10 @@ Rails.application.configure do
   # the I18n.default_locale when a translation cannot be found).
   config.i18n.fallbacks = true
 
-  config.active_storage.service = :clever_cloud
+  #config.active_storage.service = :clever_cloud
+  config.active_storage.service = :local
+
+
 
   # Send deprecation notices to registered listeners.
   config.active_support.deprecation = :notify
@@ -102,7 +106,7 @@ Rails.application.configure do
   config.active_record.dump_schema_after_migration = false
 
   Rails.application.routes.default_url_options = {
-    protocol: :https,
+    protocol: :http,
     host: ENV['APP_HOST']
   }
 
